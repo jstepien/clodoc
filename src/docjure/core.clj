@@ -1,17 +1,25 @@
 (ns docjure.core
   (:use compojure.core
+        [clojure.contrib.find-namespaces :only [find-namespaces-in-jarfile]]
         ring.util.servlet
         [ring.util.codec :only [url-encode]]
         [hiccup.core :only [html escape-html]]
         hiccup.page-helpers
         [clojure.contrib.repl-utils :only [get-source]])
   (:require [compojure.route :as route])
+  (:import java.util.jar.JarFile)
   (:gen-class
      :extends javax.servlet.http.HttpServlet))
 
 (def *assets-addr* "http://gamma.mini.pw.edu.pl/~stepienj/smietnik/sh")
 
 (def *root-addr* "/stepienj")
+
+(def
+  #^{:doc "A collection of JAR files to be searched for namespaces."}
+  *documented-jar-files*
+  ["lib/clojure-1.1.0.jar"
+   "lib/clojure-contrib-1.1.0.jar"])
 
 (defn include-sh-css
   [name]
@@ -128,17 +136,30 @@
 (defn ns-contents [ns-str]
   (layout
     [ns-str]
-    (unordered-list (map #(var-link ns-str (str %)) (sorted-publics ns-str)))))
+    (try
+      (do
+        (require (symbol ns-str))
+        (unordered-list
+          (map #(var-link ns-str (str %)) (sorted-publics ns-str))))
+      (catch Exception e
+        (list [:p "Cannot load namespace " ns-str]
+              [:pre {:class :error} e])))))
 
-(defn sorted-namespaces
-  []
-  (sort (filter #(not (= "user" %)) (map #(str (.name %)) (all-ns)))))
+(defn jar-files
+  [files]
+  (map #(java.util.jar.JarFile. %) files))
+
+(def interesting-namespaces
+  (map str
+       (reduce
+         #(concat %1 (find-namespaces-in-jarfile %2))
+         [] (jar-files *documented-jar-files*))))
 
 (defn main-page
   []
   (layout
     []
-    (unordered-list (map ns-link (sorted-namespaces)))))
+    (unordered-list (map ns-link interesting-namespaces))))
 
 (defroutes our-routes
   (GET "/stepienj" [] (main-page))
