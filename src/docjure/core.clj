@@ -63,7 +63,7 @@
   (str "(C) 2010 Jan Stępień"))
 
 (defn layout
-  [title-coll body]
+  [title-coll & body]
   (html
     [:html
      [:head
@@ -81,7 +81,7 @@
        "a { color: #FFAA3E; }"]]
      [:body 
       [:h1 (apply title-with-links title-coll)]
-      (for [x body] x)
+      body
       [:small {:style "text-align: center"}
        [:div (clojure-info)]
        [:div (copyrights)]]]]))
@@ -114,10 +114,10 @@
 (defn var-page [ns-str var-str]
   (layout
     [ns-str var-str]
-    [[:pre (escape-html (doc-string ns-str var-str))]
-     [:pre {:class "brush: clojure;"}
-      (escape-html (source-string ns-str var-str))]
-     (highlight!)]))
+    [:pre (escape-html (doc-string ns-str var-str))]
+    [:pre {:class "brush: clojure;"}
+     (escape-html (source-string ns-str var-str))]
+    (highlight!)))
 
 (defn sorted-publics [ns-str]
   (sort (keys (ns-publics (symbol ns-str)))))
@@ -125,9 +125,9 @@
 (defn ns-contents [ns-str]
   (layout
     [ns-str]
-    [[:ul
-      (for [x (map #(var-link ns-str (str %)) (sorted-publics ns-str))]
-        [:li x])]]))
+    [:ul
+     (for [x (map #(var-link ns-str (str %)) (sorted-publics ns-str))]
+       [:li x])]))
 
 (defn sorted-namespaces
   []
@@ -137,9 +137,9 @@
   []
   (layout
     []
-    [[:ul
-      (for [x (map ns-link (sorted-namespaces))]
-        [:li x])]]))
+    [:ul
+     (for [x (map ns-link (sorted-namespaces))]
+       [:li x])]))
 
 (defroutes our-routes
   (GET "/stepienj" [] (main-page))
