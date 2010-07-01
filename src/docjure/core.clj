@@ -3,6 +3,7 @@
         ring.util.servlet
         [ring.util.codec :only [url-encode]]
         [hiccup.core :only [html escape-html]]
+        hiccup.page-helpers
         [clojure.contrib.repl-utils :only [get-source]])
   (:require [compojure.route :as route])
   (:gen-class
@@ -14,23 +15,15 @@
 
 (defn include-sh-css
   [name]
-  [:link
-   {:href (str *assets-addr* "/styles/" name)
-    :type "text/css" :rel "stylesheet"}])
-
-(defn include-css
-  [addr]
-  [:link {:href addr :type "text/css" :rel "stylesheet"}])
+  (include-css (str *assets-addr* "/styles/" name)))
 
 (defn include-sh-js
   [name]
-  [:script
-   {:src (str *assets-addr* "/scripts/" name)
-    :type "text/javascript"}])
+  (include-js (str *assets-addr* "/scripts/" name)))
 
 (defn home-link
   []
-  (html [:a {:href *root-addr*} "docjure" ]))
+  (link-to *root-addr* "docjure"))
 
 (defn ns-addr
   [ns]
@@ -38,11 +31,11 @@
 
 (defn ns-link
   [ns]
-  (html [:a {:href (ns-addr ns)} ns]))
+  (link-to (ns-addr ns) ns))
 
 (defn var-link
   [ns df]
-  (html [:a {:href (str (ns-addr ns) "/" (url-encode df))} df]))
+  (link-to (str (ns-addr ns) "/" (url-encode df)) df))
 
 (defn title
   ([] "docjure")
@@ -51,8 +44,8 @@
 
 (defn title-with-links
   ([] (home-link))
-  ([ns] (str (title-with-links) " &raquo; " (ns-link ns)))
-  ([ns var] (str (title-with-links ns) "/" (var-link ns var))))
+  ([ns] (list (title-with-links) " &raquo; " (ns-link ns)))
+  ([ns var] (list (title-with-links ns) "/" (var-link ns var))))
 
 (defn clojure-info
   []
@@ -65,6 +58,7 @@
 (defn layout
   [title-coll & body]
   (html
+    (doctype :html5)
     [:html
      [:head
       [:title (apply title title-coll)]
@@ -82,12 +76,11 @@
      [:body 
       [:h1 (apply title-with-links title-coll)]
       body
-      [:small {:style "text-align: center"}
-       [:div (clojure-info)]
-       [:div (copyrights)]]]]))
+      [:div {:style "text-align: center; font-size: small"}
+       (clojure-info) [:br] (copyrights)]]]))
 
 (defn not-found []
-  (html [:h1 "Page not found"]))
+  (layout [] [:p "Page not found."]))
 
 (defn var-name
   [ns var]
@@ -106,10 +99,11 @@
 
 (defn highlight!
   []
-  [:script {:type "text/javascript"}
-   "SyntaxHighlighter.defaults['gutter'] = false;"
-   "SyntaxHighlighter.defaults['toolbar'] = false;"
-   "SyntaxHighlighter.all();"])
+  (javascript-tag
+    (str
+      "SyntaxHighlighter.defaults['gutter'] = false;"
+      "SyntaxHighlighter.defaults['toolbar'] = false;"
+      "SyntaxHighlighter.all();")))
 
 (defn var-page [ns-str var-str]
   (layout
@@ -125,9 +119,7 @@
 (defn ns-contents [ns-str]
   (layout
     [ns-str]
-    [:ul
-     (for [x (map #(var-link ns-str (str %)) (sorted-publics ns-str))]
-       [:li x])]))
+    (unordered-list (map #(var-link ns-str (str %)) (sorted-publics ns-str)))))
 
 (defn sorted-namespaces
   []
@@ -137,9 +129,7 @@
   []
   (layout
     []
-    [:ul
-     (for [x (map ns-link (sorted-namespaces))]
-       [:li x])]))
+    (unordered-list (map ns-link (sorted-namespaces)))))
 
 (defroutes our-routes
   (GET "/stepienj" [] (main-page))
