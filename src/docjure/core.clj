@@ -31,16 +31,16 @@
 
 (defn ns-link
   [ns]
-  (link-to (ns-addr ns) ns))
+  (link-to (ns-addr ns) (escape-html ns)))
 
 (defn var-link
   [ns df]
-  (link-to (str (ns-addr ns) "/" (url-encode df)) df))
+  (link-to (str (ns-addr ns) "/" (url-encode df)) (escape-html df)))
 
 (defn title
   ([] "docjure")
-  ([ns] (str (title) " &raquo; " ns))
-  ([ns var] (str (title ns) "/" var)))
+  ([ns] (str (title) " &raquo; " (escape-html ns)))
+  ([ns var] (str (title ns) "/" (escape-html var))))
 
 (defn title-with-links
   ([] (home-link))
