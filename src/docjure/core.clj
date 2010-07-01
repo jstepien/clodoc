@@ -8,15 +8,21 @@
   (:gen-class
      :extends javax.servlet.http.HttpServlet))
 
-(def *assets-addr* "http://stepien.cc/~jan/sh")
+(def *assets-addr* "http://gamma.mini.pw.edu.pl/~stepienj/smietnik/sh")
 
-(defn include-css
+(def *root-addr* "/stepienj")
+
+(defn include-sh-css
   [name]
   [:link
    {:href (str *assets-addr* "/styles/" name)
     :type "text/css" :rel "stylesheet"}])
 
-(defn include-js
+(defn include-css
+  [addr]
+  [:link {:href addr :type "text/css" :rel "stylesheet"}])
+
+(defn include-sh-js
   [name]
   [:script
    {:src (str *assets-addr* "/scripts/" name)
@@ -24,20 +30,37 @@
 
 (defn home-link
   []
-  (html [:a {:href "/"} "docjure" ]))
+  (html [:a {:href *root-addr*} "docjure" ]))
+
+(defn ns-addr
+  [ns]
+  (str *root-addr* "/doc/" (url-encode ns)))
 
 (defn ns-link
   [ns]
-  (html [:a {:href (str "/doc/" (url-encode ns))} ns]))
+  (html [:a {:href (ns-addr ns)} ns]))
 
-(defn def-link
+(defn var-link
   [ns df]
-  (html [:a {:href (str "/doc/" (url-encode ns) "/" (url-encode df))} df]))
+  (html [:a {:href (str (ns-addr ns) "/" (url-encode df))} df]))
 
 (defn title
+  ([] "docjure")
+  ([ns] (str (title) " &raquo; " ns))
+  ([ns var] (str (title ns) "/" var)))
+
+(defn title-with-links
   ([] (home-link))
-  ([ns] (str (title) " &raquo; " (ns-link ns)))
-  ([ns var] (str (title ns) "/" (def-link ns var))))
+  ([ns] (str (title-with-links) " &raquo; " (ns-link ns)))
+  ([ns var] (str (title-with-links ns) "/" (var-link ns var))))
+
+(defn clojure-info
+  []
+  (str "Running Clojure " (clojure-version)))
+
+(defn copyrights
+  []
+  (str "(C) 2010 Jan Stępień"))
 
 (defn layout
   [title-coll body]
@@ -45,13 +68,23 @@
     [:html
      [:head
       [:title (apply title title-coll)]
-      (include-css "shCore.css")
-      (include-css "shThemeDefault.css")
-      (include-js "shCore.js")
-      (include-js "shBrushClojure.js")]
+      (include-sh-css "shCoreJankowy.css")
+      (include-sh-css "shThemeRDark.css")
+      (include-sh-js "shCore.js")
+      (include-sh-js "shBrushClojure.js")
+      (include-css "http://fonts.googleapis.com/css?family=Inconsolata")
+      ; TODO: abstraction!
+      [:style {:type "text/css"}
+       "body, pre, code { background: #1B2426; color: silver;"
+       "font-family: \"Inconsolata\", monospace; font-size: 16px;"
+       "width: 960px; margin: 10px auto;}"
+       "a { color: #FFAA3E; }"]]
      [:body 
-      [:h1 (apply title title-coll)]
-      (for [x body] x)]]))
+      [:h1 (apply title-with-links title-coll)]
+      (for [x body] x)
+      [:small {:style "text-align: center"}
+       [:div (clojure-info)]
+       [:div (copyrights)]]]]))
 
 (defn not-found []
   (html [:h1 "Page not found"]))
@@ -60,23 +93,30 @@
   [ns var]
   (symbol (str ns "/" var)))
 
-(defn doc-for
+(defn doc-string
   [ns var]
-  (with-out-str (print-doc (find-var (var-name ns var)))))
+  (apply str
+         (drop-while
+           #(or (= % \-) (= % \newline))
+           (with-out-str (print-doc (find-var (var-name ns var)))))))
 
-(defn source-for
+(defn source-string
   [ns var]
   (get-source (var-name ns var)))
 
 (defn highlight!
   []
-  [:script {:type "text/javascript"} "SyntaxHighlighter.all()"])
+  [:script {:type "text/javascript"}
+   "SyntaxHighlighter.defaults['gutter'] = false;"
+   "SyntaxHighlighter.defaults['toolbar'] = false;"
+   "SyntaxHighlighter.all();"])
 
-(defn def-page [ns-str df-str]
+(defn var-page [ns-str var-str]
   (layout
-    [ns-str df-str]
-    [[:pre (escape-html (doc-for ns-str df-str))]
-     [:pre {:class "brush: clojure"} (escape-html (source-for ns-str df-str))]
+    [ns-str var-str]
+    [[:pre (escape-html (doc-string ns-str var-str))]
+     [:pre {:class "brush: clojure;"}
+      (escape-html (source-string ns-str var-str))]
      (highlight!)]))
 
 (defn sorted-publics [ns-str]
@@ -86,7 +126,7 @@
   (layout
     [ns-str]
     [[:ul
-      (for [x (map #(def-link ns-str (str %)) (sorted-publics ns-str))]
+      (for [x (map #(var-link ns-str (str %)) (sorted-publics ns-str))]
         [:li x])]]))
 
 (defn sorted-namespaces
@@ -102,9 +142,10 @@
         [:li x])]]))
 
 (defroutes our-routes
-  (GET "/" [] (main-page))
-  (GET ["/doc/:ns", :ns #"[\w\-\.]+"] [ns] (ns-contents ns))
-  (GET ["/doc/:ns/:df", :ns #"[\w\-\.]+", :df #".*"] [ns df] (def-page ns df))
+  (GET "/stepienj" [] (main-page))
+  (GET ["/stepienj/doc/:ns", :ns #"[\w\-\.]+"] [ns] (ns-contents ns))
+  (GET ["/stepienj/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
+       (var-page ns var))
   (route/not-found (not-found)))
 
 (defservice our-routes)
