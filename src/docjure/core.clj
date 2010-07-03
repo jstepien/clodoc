@@ -7,7 +7,8 @@
         hiccup.page-helpers
         [clojure.contrib.repl-utils :only [get-source]])
   (:require [compojure.route :as route]
-            [clojure.contrib.str-utils2 :as str2])
+            [clojure.contrib.str-utils2 :as str2]
+            [hiccup.form-helpers :as form])
   (:import java.util.jar.JarFile)
   (:gen-class
      :extends javax.servlet.http.HttpServlet))
@@ -72,6 +73,11 @@
   []
   (str "(C) 2010 Jan Stępień"))
 
+(def search-form
+  (form/form-to [:post (str *root-addr* "/search")]
+                (form/text-field "what")
+                (form/submit-button "Search")))
+
 (defn layout
   [title-coll & body]
   (html
@@ -92,6 +98,7 @@
        "a { color: #FFAA3E; }"]]
      [:body 
       [:h1 (apply title-with-links title-coll)]
+      search-form
       body
       [:div {:style "text-align: center; font-size: small"}
        (clojure-info) [:br] (copyrights)]
@@ -205,7 +212,7 @@
   (GET ["/stepienj/doc/:ns", :ns #"[\w\-\.]+"] [ns] (ns-contents ns))
   (GET ["/stepienj/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
        (var-page ns var))
-  (GET "/stepienj/search/:what" [what] (search-results what))
+  (POST "/stepienj/search" [what] (search-results what))
   (route/not-found (not-found)))
 
 (defservice our-routes)
