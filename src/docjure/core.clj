@@ -6,7 +6,8 @@
         [hiccup.core :only [html escape-html]]
         hiccup.page-helpers
         [clojure.contrib.repl-utils :only [get-source]])
-  (:require [compojure.route :as route])
+  (:require [compojure.route :as route]
+            [clojure.contrib.str-utils2 :as str2])
   (:import java.util.jar.JarFile)
   (:gen-class
      :extends javax.servlet.http.HttpServlet))
@@ -150,22 +151,61 @@
   (map #(java.util.jar.JarFile. %) files))
 
 (def interesting-namespaces
-  (map str
-       (reduce
-         #(concat %1 (find-namespaces-in-jarfile %2))
-         [] (jar-files *documented-jar-files*))))
+  (reduce
+    #(concat %1 (find-namespaces-in-jarfile %2))
+    [] (jar-files *documented-jar-files*)))
 
 (defn main-page
   []
   (layout
     []
-    (unordered-list (map ns-link interesting-namespaces))))
+    (unordered-list (map #(ns-link (str %)) interesting-namespaces))))
+
+(defn find-vars-containing
+  "Returns a map with vars containing a given string assigned to their
+  namespaces."
+  [x]
+  (reduce
+    (fn [hash ns]
+      (try
+        (do
+          (require ns)
+          (let
+            [vars (filter
+                    #(str2/contains? (str %) x)
+                    (map first (ns-publics ns)))]
+            (if (empty? vars)
+              hash
+              (assoc hash ns vars))))
+        (catch Exception e hash)))
+    {} interesting-namespaces))
+
+
+(defn search-results
+  [what]
+  (layout
+    []
+    [:p [:strong what] ", right? Let's see..."]
+    (let
+      [vars-hash (find-vars-containing what)]
+      (if (empty? vars-hash)
+        [:p "No results."]
+        (unordered-list
+          (map
+            (fn [hash]
+              (list (str (first hash))
+                    (unordered-list
+                      (map
+                        #(var-link (str (first hash)) (str %))
+                        (second hash)))))
+            vars-hash))))))
 
 (defroutes our-routes
   (GET "/stepienj" [] (main-page))
   (GET ["/stepienj/doc/:ns", :ns #"[\w\-\.]+"] [ns] (ns-contents ns))
   (GET ["/stepienj/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
        (var-page ns var))
+  (GET "/stepienj/search/:what" [what] (search-results what))
   (route/not-found (not-found)))
 
 (defservice our-routes)
