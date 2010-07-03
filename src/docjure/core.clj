@@ -47,6 +47,14 @@
   ([ns] (list (title-with-links) " &raquo; " (ns-link ns)))
   ([ns var] (list (title-with-links ns) "/" (var-link ns var))))
 
+(def fork-me-ribbon
+  (link-to
+    "http://github.com/jstepien/docjure"
+    (html [:img
+     {:style "position: absolute; top: 0; right: 0; border: 0;"
+      :src "http://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png"
+      :alt "Fork me on GitHub"}])))
+
 (defn clojure-info
   []
   (str "Running Clojure " (clojure-version)))
@@ -77,7 +85,8 @@
       [:h1 (apply title-with-links title-coll)]
       body
       [:div {:style "text-align: center; font-size: small"}
-       (clojure-info) [:br] (copyrights)]]]))
+       (clojure-info) [:br] (copyrights)]
+      fork-me-ribbon]]))
 
 (defn not-found []
   (layout [] [:p "Page not found."]))
