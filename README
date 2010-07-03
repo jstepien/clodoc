@@ -1,16 +1,15 @@
 # docjure
 
-FIXME: write description
+Getting a grasp of Clojure by creating a web-based namespaces browser.
 
 ## Usage
 
-FIXME: write
-
-## Installation
-
-FIXME: write
+	$ lein deps
+	$ lein repl src/docjure/run-jetty.clj
 
 ## License
+
+Copyright (C) 2010 Jan Stępień
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
