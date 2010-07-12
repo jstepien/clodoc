@@ -13,9 +13,9 @@
   (:gen-class
      :extends javax.servlet.http.HttpServlet))
 
-(def *assets-addr* "http://gamma.mini.pw.edu.pl/~stepienj/smietnik/sh")
+(def *assets-addr* "")
 
-(def *root-addr* "/stepienj")
+(def *root-addr* "")
 
 (def
   #^{:doc "A collection of JAR files to be searched for namespaces."}
@@ -33,7 +33,7 @@
 
 (defn home-link
   []
-  (link-to *root-addr* "docjure"))
+  (link-to (str *root-addr* "/") "docjure"))
 
 (defn ns-addr
   [ns]
@@ -208,11 +208,11 @@
             vars-hash))))))
 
 (defroutes our-routes
-  (GET "/stepienj" [] (main-page))
-  (GET ["/stepienj/doc/:ns", :ns #"[\w\-\.]+"] [ns] (ns-contents ns))
-  (GET ["/stepienj/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
+  (GET "/" [] (main-page))
+  (GET ["/doc/:ns", :ns #"[\w\-\.]+"] [ns] (ns-contents ns))
+  (GET ["/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
        (var-page ns var))
-  (POST "/stepienj/search" [what] (search-results what))
+  (POST "/search" [what] (search-results what))
   (route/not-found (not-found)))
 
 (defservice our-routes)
