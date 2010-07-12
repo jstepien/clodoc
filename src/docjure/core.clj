@@ -20,8 +20,8 @@
 (def
   #^{:doc "A collection of JAR files to be searched for namespaces."}
   *documented-jar-files*
-  ["lib/clojure-1.1.0.jar"
-   "lib/clojure-contrib-1.1.0.jar"])
+  ["WEB-INF/lib/clojure-1.1.0.jar"
+   "WEB-INF/lib/clojure-contrib-1.1.0.jar"])
 
 (defn include-sh-css
   [name]
