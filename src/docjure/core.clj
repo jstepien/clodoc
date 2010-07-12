@@ -158,9 +158,11 @@
   (map #(java.util.jar.JarFile. %) files))
 
 (def interesting-namespaces
-  (reduce
-    #(concat %1 (find-namespaces-in-jarfile %2))
-    [] (jar-files *documented-jar-files*)))
+  (try
+    (reduce
+      #(concat %1 (find-namespaces-in-jarfile %2))
+      [] (jar-files *documented-jar-files*))
+    (catch Exception e [])))
 
 (defn main-page
   []
@@ -184,7 +186,8 @@
             (if (empty? vars)
               hash
               (assoc hash ns vars))))
-        (catch Exception e hash)))
+        (catch Exception e hash)
+        (catch NoClassDefFoundError e hash)))
     {} interesting-namespaces))
 
 
