@@ -158,18 +158,21 @@
   [files]
   (map #(java.util.jar.JarFile. %) files))
 
-(def interesting-namespaces
-  (try
-    (reduce
-      #(concat %1 (find-namespaces-in-jarfile %2))
-      [] (jar-files *documented-jar-files*))
-    (catch Exception e [])))
+(defn interesting-namespaces
+  []
+  (cache/get!
+    "interesting-namespaces"
+    #(try
+       (reduce
+         (fn [coll jar] (concat coll (find-namespaces-in-jarfile jar)))
+         [] (jar-files *documented-jar-files*))
+       (catch Exception e []))))
 
 (defn main-page
   []
   (layout
     []
-    (unordered-list (map #(ns-link (str %)) interesting-namespaces))))
+    (unordered-list (map #(ns-link (str %)) (interesting-namespaces)))))
 
 (defn ns-publics-hash
   []
@@ -187,7 +190,7 @@
                 (assoc hash ns vars))))
           (catch Exception e hash)
           (catch NoClassDefFoundError e hash)))
-      {} interesting-namespaces)))
+      {} (interesting-namespaces))))
 
 (defn find-vars-containing
   "Returns a map with vars containing a given string assigned to their
@@ -203,7 +206,7 @@
           (if (empty? vars)
             hash
             (assoc hash ns vars)))))
-    {} interesting-namespaces))
+    {} (interesting-namespaces)))
 
 (defn search-results
   [what]
