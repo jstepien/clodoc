@@ -20,14 +20,14 @@
   ([key]
    (or
      (get @vm-cache key)
-     (prn "Not present in vm-cache")
+     (println "Not present in vm-cache: " key)
      (try
        (let [value (with-in-str (.get jcache key) (read))]
          (if value
            (dosync (ref-set vm-cache (assoc @vm-cache key value))))
          value)
        (catch NullPointerException e nil))
-     (prn "Not present in jcache")))
+     (println "Not present in jcache: " key)))
   ([key func]
    (or
      (get! key)
