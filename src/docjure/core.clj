@@ -114,14 +114,22 @@
 
 (defn doc-string
   [ns var]
-  (apply str
-         (drop-while
-           #(or (= % \-) (= % \newline))
-           (with-out-str (print-doc (find-var (var-name ns var)))))))
+  (cache/get!
+    (str "doc-string:" ns "/" var)
+    #(do
+       (require (symbol ns))
+       (apply str
+              (drop-while
+                (fn [c] (or (= c \-) (= c \newline)))
+                (with-out-str (print-doc (find-var (var-name ns var)))))))))
 
 (defn source-string
   [ns var]
-  (get-source (var-name ns var)))
+  (cache/get!
+    (str "source-string:" ns "/" var)
+    #(do
+       (require (symbol ns))
+       (get-source (var-name ns var)))))
 
 (defn highlight!
   []
