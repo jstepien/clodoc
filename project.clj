@@ -4,7 +4,8 @@
                  [org.clojure/clojure-contrib "1.1.0"]
                  [compojure "0.4.0"]
                  [hiccup "0.2.6"]
-                 [ring/ring-servlet "0.2.3"]]
+                 [ring/ring-servlet "0.2.3"]
+                 [net.sf.jsr107cache/jsr107cache "1.1"]]
   :dev-dependencies [[uk.org.alienscience/leiningen-war "0.0.3"]
                      [ring/ring-jetty-adapter "0.2.3"]]
   :namespaces [docjure.core])

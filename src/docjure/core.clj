@@ -8,7 +8,8 @@
         [clojure.contrib.repl-utils :only [get-source]])
   (:require [compojure.route :as route]
             [clojure.contrib.str-utils2 :as str2]
-            [hiccup.form-helpers :as form])
+            [hiccup.form-helpers :as form]
+            [docjure.cache :as cache])
   (:import java.util.jar.JarFile)
   (:gen-class
      :extends javax.servlet.http.HttpServlet))
@@ -170,6 +171,24 @@
     []
     (unordered-list (map #(ns-link (str %)) interesting-namespaces))))
 
+(defn ns-publics-hash
+  []
+  (cache/get!
+    "ns-publics-hash"
+    #(reduce
+      (fn [hash ns]
+        (try
+          (do
+            (require ns)
+            (let
+              [vars (map first (ns-publics ns))]
+              (if (empty? vars)
+                hash
+                (assoc hash ns vars))))
+          (catch Exception e hash)
+          (catch NoClassDefFoundError e hash)))
+      {} interesting-namespaces)))
+
 (defn find-vars-containing
   "Returns a map with vars containing a given string assigned to their
   namespaces."
@@ -177,19 +196,14 @@
   (reduce
     (fn [hash ns]
       (try
-        (do
-          (require ns)
-          (let
-            [vars (filter
-                    #(str2/contains? (str %) x)
-                    (map first (ns-publics ns)))]
-            (if (empty? vars)
-              hash
-              (assoc hash ns vars))))
-        (catch Exception e hash)
-        (catch NoClassDefFoundError e hash)))
+        (let
+          [vars (filter
+                  #(str2/contains? (str %) x)
+                  (get (ns-publics-hash) ns))]
+          (if (empty? vars)
+            hash
+            (assoc hash ns vars)))))
     {} interesting-namespaces))
-
 
 (defn search-results
   [what]
