@@ -5,7 +5,7 @@ Getting a grasp of Clojure by creating a web-based namespaces browser.
 ## Usage
 
 	$ lein deps
-	$ lein repl src/docjure/run-jetty.clj
+	$ lein run -m docjure.run-jetty
 
 ## License
 
