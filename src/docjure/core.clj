@@ -75,7 +75,7 @@
 
 (defn copyrights
   []
-  (str "(C) 2010 Jan Stępień"))
+  (str "(C) 2010-2011 Jan Stępień"))
 
 (def search-form
   (form/form-to [:post (str *root-addr* "/search")]
