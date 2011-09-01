@@ -21,8 +21,11 @@
 (def
   #^{:doc "A collection of JAR files to be searched for namespaces."}
   *documented-jar-files*
-  ["WEB-INF/lib/clojure-1.3.0-SNAPSHOT.jar"
-   "WEB-INF/lib/clojure-contrib-1.2.0.jar"])
+  (let [files ["WEB-INF/lib/clojure-1.2.1.jar"
+               "WEB-INF/lib/clojure-contrib-1.2.0.jar"]]
+    (if (.isDirectory (java.io.File. "war"))
+      (map #(str "war/" %) files)
+      files)))
 
 (defn include-sh-css
   [name]
