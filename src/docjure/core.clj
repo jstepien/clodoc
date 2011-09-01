@@ -100,7 +100,7 @@
        "font-family: \"Inconsolata\", monospace; font-size: 16px;"
        "width: 960px; margin: 10px auto;}"
        "a { color: #FFAA3E; }"]]
-     [:body 
+     [:body
       [:h1 (apply title-with-links title-coll)]
       search-form
       body
