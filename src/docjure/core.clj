@@ -228,11 +228,16 @@
                         (second hash)))))
             vars-hash))))))
 
+(defn add-cache-control
+  [html]
+  {:headers {"Cache-Control" (str "public, max-age: " (* 60 60))}
+   :body html})
+
 (defroutes our-routes
-  (GET "/" [] (main-page))
-  (GET ["/doc/:ns", :ns #"[\w\-\.]+"] [ns] (ns-contents ns))
+  (GET "/" [] (add-cache-control (main-page)))
+  (GET ["/doc/:ns", :ns #"[\w\-\.]+"] [ns] (add-cache-control (ns-contents ns)))
   (GET ["/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
-       (var-page ns var))
+       (add-cache-control (var-page ns var)))
   (POST "/search" {params :params} (search-results (params :what)))
   (POST "/build_search_cache" [] (do (search-cache/prepare
                                        (interesting-namespaces))
