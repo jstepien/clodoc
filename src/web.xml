@@ -2,6 +2,7 @@
  <servlet>
    <servlet-name>docjure</servlet-name>
    <servlet-class>docjure.core</servlet-class>
+   <load-on-startup>1</load-on-startup>
  </servlet>
  <servlet-mapping>
    <servlet-name>docjure</servlet-name>
