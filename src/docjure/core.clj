@@ -7,9 +7,11 @@
         hiccup.page-helpers
         [clojure.contrib.repl-utils :only [get-source]])
   (:require [compojure.route :as route]
+            [compojure.handler :as handler]
             [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
-            [docjure.cache :as cache])
+            [docjure.cache :as cache]
+            [docjure.search-cache :as search-cache])
   (:import java.util.jar.JarFile)
   (:gen-class
      :extends javax.servlet.http.HttpServlet))
@@ -181,27 +183,15 @@
 
 (defn main-page
   []
-  (layout
-    []
-    (unordered-list (map #(ns-link (str %)) (interesting-namespaces)))))
+  (do
+    (search-cache/enqueue-preparation)
+    (layout
+      []
+      (unordered-list (map #(ns-link (str %)) (interesting-namespaces))))))
 
 (defn ns-publics-hash
   []
-  (cache/get!
-    "ns-publics-hash"
-    #(reduce
-      (fn [hash ns]
-        (try
-          (do
-            (require ns)
-            (let
-              [vars (map first (ns-publics ns))]
-              (if (empty? vars)
-                hash
-                (assoc hash ns vars))))
-          (catch Exception e hash)
-          (catch NoClassDefFoundError e hash)))
-      {} (interesting-namespaces))))
+  (cache/get! "ns-publics-hash"))
 
 (defn find-vars-containing
   "Returns a map with vars containing a given string assigned to their
@@ -243,7 +233,11 @@
   (GET ["/doc/:ns", :ns #"[\w\-\.]+"] [ns] (ns-contents ns))
   (GET ["/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
        (var-page ns var))
-  (POST "/search" [what] (search-results what))
+  (POST "/search" {params :params} (search-results (params :what)))
+  (POST "/build_search_cache" [] (do (search-cache/prepare
+                                       (interesting-namespaces))
+                                   "ok"))
   (route/not-found (not-found)))
 
-(defservice our-routes)
+(defservice
+  (handler/api our-routes))
