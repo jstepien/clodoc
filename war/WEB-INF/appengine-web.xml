@@ -3,4 +3,5 @@
   <version>1</version>
   <static-files />
   <resource-files />
+  <threadsafe>true</threadsafe>
 </appengine-web-app>
