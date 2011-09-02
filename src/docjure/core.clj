@@ -159,10 +159,12 @@
   (layout
     [ns-str]
     (try
-      (do
-        (require (symbol ns-str))
-        (unordered-list
-          (map #(var-link ns-str (str %)) (sorted-publics ns-str))))
+      (cache/get!
+        (str "ns-contents-string:" ns-str)
+        (fn []
+          (require (symbol ns-str))
+          (unordered-list
+            (map #(var-link ns-str (str %)) (sorted-publics ns-str)))))
       (catch Exception e
         (list [:p "Cannot load namespace " ns-str]
               [:pre {:class :error} e])))))
