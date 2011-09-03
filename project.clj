@@ -7,6 +7,7 @@
                  [ring/ring-servlet "0.3.11"]
                  [net.sf.jsr107cache/jsr107cache "1.1"]
                  [com.google.appengine/appengine-api-1.0-sdk "1.4.3"]
-                 [com.google.appengine/appengine-jsr107cache "1.4.3"]]
-  :dev-dependencies [[ring/ring-jetty-adapter "0.3.11"]]
-  :aot [docjure.core])
+                 [com.google.appengine/appengine-jsr107cache "1.4.3"]
+                 [clojure-http-client "1.1.0"]
+                 [ring/ring-jetty-adapter "0.3.11"]]
+  :aot [docjure.core docjure.jars-handler])

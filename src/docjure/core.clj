@@ -11,7 +11,9 @@
             [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
             [docjure.cache :as cache]
-            [docjure.search-cache :as search-cache])
+            [docjure.search-cache :as search-cache]
+            [docjure.security :as security]
+            [clojure-http.resourcefully :as res])
   (:import java.util.jar.JarFile)
   (:gen-class
      :extends javax.servlet.http.HttpServlet))
@@ -19,6 +21,8 @@
 (def *assets-addr* "")
 
 (def *root-addr* "")
+
+(def *jars-handler-url* "http://localhost:8090")
 
 (def
   #^{:doc "A collection of JAR files to be searched for namespaces."}
@@ -230,6 +234,21 @@
                         (second hash)))))
             vars-hash))))))
 
+(defn enqueue-scanning
+  [name]
+  (res/post (str *jars-handler-url* "/scan") {}
+            {:name name :callback "http://localhost:8080/scanned"}))
+
+(defn scanned
+  [data signature]
+  (if (security/signed? data signature)
+    (do
+      (prn (with-in-str data (read)))
+      {:status 200})
+    (do
+      (prn "wrong signature" data signature)
+      {:status 403})))
+
 (defn add-cache-control
   [html]
   {:headers {"Cache-Control" (str "public, max-age: " (* 60 60))}
@@ -244,6 +263,8 @@
   (POST "/build_search_cache" [] (do (search-cache/prepare
                                        (interesting-namespaces))
                                    "ok"))
+  (POST "/scan" [name] (do (enqueue-scanning name) name))
+  (POST "/scanned" {{data :data sig :signature} :params} (scanned data sig))
   (route/not-found (not-found)))
 
 (defservice
