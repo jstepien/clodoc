@@ -21,6 +21,13 @@
 
 (def *root-addr* "")
 
+(defmacro stdout-of
+  [#^String cmd]
+  `~(.trim ^String (slurp (.getInputStream (.exec (Runtime/getRuntime) cmd)))))
+
+(def version
+  (apply str (take 8 (stdout-of "git log --format=oneline HEAD~.."))))
+
 (defn include-sh-css
   [name]
   (include-css (str *assets-addr* "/styles/" name)))
@@ -63,9 +70,9 @@
       :src "http://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png"
       :alt "Fork me on GitHub"}])))
 
-(defn clojure-info
+(defn version-info
   []
-  (str "Running Clojure " (clojure-version)))
+  (str "Running Docjure " version " on Clojure " (clojure-version)))
 
 (defn copyrights
   []
@@ -99,7 +106,7 @@
       search-form
       body
       [:div {:style "text-align: center; font-size: small"}
-       (clojure-info) [:br] (copyrights)]
+       (version-info) [:br] (copyrights)]
       fork-me-ribbon]]))
 
 (defn not-found []
