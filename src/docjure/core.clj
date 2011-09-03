@@ -11,6 +11,7 @@
             [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
             [docjure.cache :as cache]
+            [docjure.background :as background]
             [docjure.jars-handler :as jars-handler]
             [clojure-http.resourcefully :as res])
   (:import java.util.jar.JarFile)
@@ -207,8 +208,12 @@
   (GET ["/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
        (add-cache-control (var-page ns var)))
   (POST "/search" {params :params} (search-results (params :what)))
-  (POST "/scan" [name] (with-out-str
-                         (clojure.pprint/pprint (jars-handler/scan name))))
+  (POST "/scan" [name] (do
+                         (background/add-task "/background_scan" {:name name})
+                         (str "scheduled " name)))
+  (POST "/background_scan" {{name :name} :params} (do
+                                                    (jars-handler/scan name)
+                                                    (str "scanned " name)))
   (route/not-found (not-found)))
 
 (defservice
