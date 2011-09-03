@@ -11,7 +11,6 @@
             [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
             [docjure.cache :as cache]
-            [docjure.search-cache :as search-cache]
             [docjure.jars-handler :as jars-handler]
             [clojure-http.resourcefully :as res])
   (:import java.util.jar.JarFile)
@@ -146,23 +145,30 @@
         (list [:p "Cannot load namespace " ns-str]
               [:pre {:class :error} e])))))
 
+(defn all-namespaces
+  []
+  (cache/get! "all-ns"))
+
 (defn main-page
   []
-  (do
-    (search-cache/enqueue-preparation)
-    (layout
-      []
-      (unordered-list (map #(ns-link (str %)) (cache/get! "all-ns"))))))
-
-(defn ns-publics-hash
-  []
-  (cache/get! "ns-publics-hash"))
+  (layout
+    []
+    (unordered-list (map #(ns-link (str %)) (all-namespaces)))))
 
 (defn find-vars-containing
   "Returns a map with vars containing a given string assigned to their
   namespaces."
   [x]
-  {})
+  (reduce
+    (fn [hash ns]
+      (try
+        (let [vars (filter #(str2/contains? (str %) x)
+                           (cache/get! (str "ns:" ns)))]
+          (if (empty? vars)
+            hash
+            (assoc hash ns vars)))))
+    {} (all-namespaces)))
+
 
 (defn search-results
   [what]
@@ -194,8 +200,6 @@
   (GET ["/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
        (add-cache-control (var-page ns var)))
   (POST "/search" {params :params} (search-results (params :what)))
-  (POST "/build_search_cache" [] (do (search-cache/prepare [])
-                                   "ok"))
   (POST "/scan" [name] (with-out-str
                          (clojure.pprint/pprint (jars-handler/scan name))))
   (route/not-found (not-found)))
