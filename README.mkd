@@ -4,12 +4,12 @@ Getting a grasp of Clojure by creating a web-based namespaces browser.
 
 ## Usage
 
-	$ lein deps
-	$ lein run -m docjure.run-jetty
+    $ lein deps
+    $ lein run -m docjure.run-jetty
 
 ## License
 
-Copyright (C) 2010 Jan Stępień
+Copyright (C) 2010-2011 Jan Stępień
 
 This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License as published by the Free
