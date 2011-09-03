@@ -1,15 +1,9 @@
 (ns docjure.jars-handler
-  (:use [clojure.contrib.find-namespaces :only [find-namespaces-in-jarfile]]
-        [clojure.contrib.repl-utils :only [get-source]]
-        compojure.core)
+  (:use [clojure.pprint :only [pprint]])
   (:require [clojure.xml :as xml]
             [clojure.contrib.str-utils2 :as str2]
             [clojure-http.resourcefully :as res]
-            [compojure.handler :as handler]
-            [docjure.security :as security]
-            [ring.adapter.jetty :as jetty]
-            [clojure.contrib.classpath :as cp])
-  (:gen-class))
+            [docjure.cache :as cache]))
 
 (defn get-body
   [url]
@@ -34,106 +28,85 @@
         jar-url (str main-url newest-version "/" pkg "-" newest-version ".jar")]
     jar-url))
 
-(def *trusted-sites*
-  ["http://build.clojure.org/releases/org/clojure/"])
+(defn read-zip-entry
+  [zip]
+  (let [in-parens #(str "(\n" % "\n)")
+        buflen 4096
+        buf (byte-array buflen)]
+    (with-in-str
+      (in-parens
+        (loop [contents ""]
+          (let [nbytes (.read zip buf 0 buflen)]
+            (if (= -1 nbytes)
+              contents
+              (recur (str contents (String. buf 0 nbytes)))))))
+      (read))))
 
-(defn trusted?
-  [#^String addr]
-  (not (empty?
-         (filter true? (map #(.startsWith addr %) *trusted-sites*)))))
-
-(defn download-jar
+(defn clj-files-in-jar
   [addr]
-  (if (not (trusted? addr))
-    (throw (Exception. (str addr " isn't a trusted URI")))
-    (let [buflen 4096
-          buf (byte-array buflen)
-          file (java.io.File/createTempFile "docjure" ".jar")
-          url (java.net.URL. addr)
-          in (java.io.BufferedInputStream. (.openStream url))
-          fos (java.io.FileOutputStream. file)
-          bout (java.io.BufferedOutputStream. fos buflen)]
-      (loop []
-        (let [nbytes (.read in buf)]
-          (if (= -1 nbytes)
-            (do
-              (.flush bout)
-              (map #(.close %) [bout fos in])
-              (java.util.jar.JarFile. file))
-            (do
-              (.write bout buf 0 nbytes)
-              (recur))))))))
+  (let [url (java.net.URL. addr)
+        in (java.io.BufferedInputStream. (.openStream url))
+        zip (java.util.zip.ZipInputStream. in)]
+    (loop [entries {}]
+      (if-let [entry (.getNextEntry zip)]
+        (if (.endsWith (.getName entry) ".clj")
+          (recur (assoc entries (.getName entry) (read-zip-entry zip)))
+          (recur entries))
+        entries))))
 
-(defn namespaces-in
-  [jar]
-  (try
-    (find-namespaces-in-jarfile jar)
-    (catch Exception e (do (prn e) []))))
+(defn doc-string
+  [def]
+  (or
+    (:doc (meta (second def)))
+    (let [doc (second (rest def))]
+      (and (string? doc) doc))
+    ""))
 
-(defn spawn
-  [& args]
-  (.start (ProcessBuilder. (java.util.ArrayList. args))))
+(def definitions
+  '#{def definline definterface defmacro defmulti defn defonce defprotocol
+     defrecord defstruct deftype})
 
-(defn unzip
-  [file]
-  (if (not (= 0 (.waitFor (spawn "unzip" "-qo" file "-d" "tmpclasspath/"))))
-    (throw (Exception. (str "unzipping " file " failed")))))
+(defn definition?
+  [sexp]
+  (definitions (first sexp)))
 
-(defn var-name
-  [ns var]
-  (symbol (str ns "/" var)))
-
-(defn vars-data
-  [ns keys]
+(defn ns-contents
+  [ns sexps]
   (reduce
-    (fn [acc var]
-      (assoc acc var
-             {:doc
-              (apply
-                str
-                (drop-while
-                  (fn [c] (or (= c \-) (= c \newline)))
-                  (with-out-str
-                    (print-doc (find-var (var-name ns var))))))
-              :source (get-source (var-name ns var))}))
-    {} keys))
+    (fn [acc def]
+      (assoc acc (second def) {:doc (doc-string def)
+                               :src (with-out-str (pprint def))}))
+    {} (filter definition? sexps)))
+
+(defn get-namespace
+  [sexps]
+  (second (first (filter #(= (first %) 'ns) sexps))))
 
 (defn ns-publics-in
-  [#^java.util.jar.JarFile jar]
-  (let [namespaces (namespaces-in jar)]
-    (reduce (fn [acc ns]
-              (do
-                (unzip (.getName jar))
-                (try
-                  (do
-                    (require (symbol ns))
-                    (assoc acc ns (vars-data ns (keys (ns-publics ns)))))
-                  (catch Exception ex acc))))
-            {} namespaces)))
+  [sexps]
+  (reduce
+    (fn [acc [filename contents]]
+      (let [ns (get-namespace contents)]
+        (if (or (nil? ns) (.endsWith (str ns) ".examples"))
+          acc
+          (assoc acc ns (ns-contents ns contents)))))
+    {} sexps))
 
-(defn fetch-jar-file
+(defn clj-files-in
   [name]
   (if (re-matches #"^http.*\.jar$" name)
-    (download-jar name)
-    (download-jar (get-url-for name))))
+    (clj-files-in-jar name)
+    (clj-files-in-jar (get-url-for name))))
+
+(defn populate-cache
+  [data]
+  (let [old-ns (or (cache/get! "all-ns") [])]
+    (cache/put! "all-ns" (sort (distinct (concat old-ns (map first data)))))
+    (doseq [[ns vars] data]
+      (cache/put! (str "ns:" ns) (map first vars))
+      (doseq [[name meta] vars]
+        (cache/put! (str "var:" ns "/" name) meta)))))
 
 (defn scan
-  [name callback]
-  (let [data (str (ns-publics-in (fetch-jar-file name)))]
-    (res/post callback {} {:data data :signature (security/sign data)})))
-
-(defn start-scan-process
-  [name callback]
-  (spawn "java" "-client" "-cp"
-         "docjure-0.0.1-SNAPSHOT.jar:lib/*:lib/dev/*:tmpclasspath"
-         "docjure.jars_handler" name callback))
-
-(defroutes main-routes
-  (POST "/scan" {{name :name callback :callback} :params}
-        (do (start-scan-process name callback) "ok")))
-
-(defn -main
-  ([]
-   (jetty/run-jetty (handler/api main-routes) {:port 8090}))
-  ([name callback]
-   (scan name callback)))
+  [name]
+  (populate-cache (ns-publics-in (clj-files-in name))))

@@ -1,6 +1,5 @@
 (ns docjure.core
   (:use compojure.core
-        [clojure.contrib.find-namespaces :only [find-namespaces-in-jarfile]]
         ring.util.servlet
         [ring.util.codec :only [url-encode]]
         [hiccup.core :only [html escape-html]]
@@ -8,11 +7,12 @@
         [clojure.contrib.repl-utils :only [get-source]])
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
+            clojure.pprint
             [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
             [docjure.cache :as cache]
             [docjure.search-cache :as search-cache]
-            [docjure.security :as security]
+            [docjure.jars-handler :as jars-handler]
             [clojure-http.resourcefully :as res])
   (:import java.util.jar.JarFile)
   (:gen-class
@@ -21,17 +21,6 @@
 (def *assets-addr* "")
 
 (def *root-addr* "")
-
-(def *jars-handler-url* "http://localhost:8090")
-
-(def
-  #^{:doc "A collection of JAR files to be searched for namespaces."}
-  *documented-jar-files*
-  (let [files ["WEB-INF/lib/clojure-1.2.1.jar"
-               "WEB-INF/lib/clojure-contrib-1.2.0.jar"]]
-    (if (.isDirectory (java.io.File. "war"))
-      (map #(str "war/" %) files)
-      files)))
 
 (defn include-sh-css
   [name]
@@ -121,25 +110,6 @@
   [ns var]
   (symbol (str ns "/" var)))
 
-(defn doc-string
-  [ns var]
-  (cache/get!
-    (str "doc-string:" ns "/" var)
-    #(do
-       (require (symbol ns))
-       (apply str
-              (drop-while
-                (fn [c] (or (= c \-) (= c \newline)))
-                (with-out-str (print-doc (find-var (var-name ns var)))))))))
-
-(defn source-string
-  [ns var]
-  (cache/get!
-    (str "source-string:" ns "/" var)
-    #(do
-       (require (symbol ns))
-       (get-source (var-name ns var)))))
-
 (defn highlight!
   []
   (javascript-tag
@@ -149,43 +119,32 @@
       "SyntaxHighlighter.all();")))
 
 (defn var-page [ns-str var-str]
-  (layout
-    [ns-str var-str]
-    [:pre (escape-html (doc-string ns-str var-str))]
-    [:pre {:class "brush: clojure;"}
-     (escape-html (source-string ns-str var-str))]
-    (highlight!)))
+  (cache/get!
+    (str "var-rendered:" ns-str "/" var-str)
+    #(let [{src :src doc :doc} (cache/get! (str "var:" ns-str "/" var-str))]
+       (layout
+         [ns-str var-str]
+         (if (not (empty? doc))
+           [:pre (escape-html doc)])
+         [:pre {:class "brush: clojure;"}
+          (escape-html src)]
+         (highlight!)))))
 
 (defn sorted-publics [ns-str]
-  (sort (keys (ns-publics (symbol ns-str)))))
+  (sort (cache/get! (str "ns:" ns-str))))
 
 (defn ns-contents [ns-str]
   (layout
     [ns-str]
     (try
       (cache/get!
-        (str "ns-contents-string:" ns-str)
+        (str "ns-rendered:" ns-str)
         (fn []
-          (require (symbol ns-str))
           (unordered-list
             (map #(var-link ns-str (str %)) (sorted-publics ns-str)))))
       (catch Exception e
         (list [:p "Cannot load namespace " ns-str]
               [:pre {:class :error} e])))))
-
-(defn jar-files
-  [files]
-  (map #(java.util.jar.JarFile. %) files))
-
-(defn interesting-namespaces
-  []
-  (cache/get!
-    "interesting-namespaces"
-    #(try
-       (reduce
-         (fn [coll jar] (concat coll (find-namespaces-in-jarfile jar)))
-         [] (jar-files *documented-jar-files*))
-       (catch Exception e []))))
 
 (defn main-page
   []
@@ -193,7 +152,7 @@
     (search-cache/enqueue-preparation)
     (layout
       []
-      (unordered-list (map #(ns-link (str %)) (interesting-namespaces))))))
+      (unordered-list (map #(ns-link (str %)) (cache/get! "all-ns"))))))
 
 (defn ns-publics-hash
   []
@@ -203,17 +162,7 @@
   "Returns a map with vars containing a given string assigned to their
   namespaces."
   [x]
-  (reduce
-    (fn [hash ns]
-      (try
-        (let
-          [vars (filter
-                  #(str2/contains? (str %) x)
-                  (get (ns-publics-hash) ns))]
-          (if (empty? vars)
-            hash
-            (assoc hash ns vars)))))
-    {} (interesting-namespaces)))
+  {})
 
 (defn search-results
   [what]
@@ -234,21 +183,6 @@
                         (second hash)))))
             vars-hash))))))
 
-(defn enqueue-scanning
-  [name]
-  (res/post (str *jars-handler-url* "/scan") {}
-            {:name name :callback "http://localhost:8080/scanned"}))
-
-(defn scanned
-  [data signature]
-  (if (security/signed? data signature)
-    (do
-      (prn (with-in-str data (read)))
-      {:status 200})
-    (do
-      (prn "wrong signature" data signature)
-      {:status 403})))
-
 (defn add-cache-control
   [html]
   {:headers {"Cache-Control" (str "public, max-age: " (* 60 60))}
@@ -260,11 +194,10 @@
   (GET ["/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
        (add-cache-control (var-page ns var)))
   (POST "/search" {params :params} (search-results (params :what)))
-  (POST "/build_search_cache" [] (do (search-cache/prepare
-                                       (interesting-namespaces))
+  (POST "/build_search_cache" [] (do (search-cache/prepare [])
                                    "ok"))
-  (POST "/scan" [name] (do (enqueue-scanning name) name))
-  (POST "/scanned" {{data :data sig :signature} :params} (scanned data sig))
+  (POST "/scan" [name] (with-out-str
+                         (clojure.pprint/pprint (jars-handler/scan name))))
   (route/not-found (not-found)))
 
 (defservice
