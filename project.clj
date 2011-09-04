@@ -10,5 +10,4 @@
                  [com.google.appengine/appengine-jsr107cache "1.4.3"]
                  [clojure-http-client "1.1.0"]
                  [am.ik/clj-gae-ds "0.3.0"]]
-  :dev-dependencies [[ring/ring-jetty-adapter "0.3.11"]]
   :aot [docjure.core])

@@ -4,8 +4,10 @@ Getting a grasp of Clojure by creating a web-based namespaces browser.
 
 ## Usage
 
-    $ lein deps
-    $ lein run -m docjure.run-jetty
+    lein deps
+    lein jar
+    cp docjure-*.jar lib/
+    path/to/appengine-java-sdk/bin/dev_appserver.sh war
 
 ## License
 
