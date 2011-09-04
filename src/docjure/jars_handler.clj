@@ -1,6 +1,6 @@
 (ns docjure.jars-handler
-  (:use [clojure.pprint :only [pprint]])
   (:require [clojure.xml :as xml]
+            [clojure.pprint :as pprint]
             [clojure.contrib.str-utils2 :as str2]
             [clojure-http.resourcefully :as res]
             [docjure.cache :as cache]))
@@ -74,8 +74,10 @@
   [ns sexps]
   (reduce
     (fn [acc def]
-      (assoc acc (second def) {:doc (doc-string def)
-                               :src (with-out-str (pprint def))}))
+      (assoc acc (second def)
+             {:doc (doc-string def)
+              :src (binding [pprint/*print-suppress-namespaces* true]
+                      (with-out-str (pprint/pprint def)))}))
     {} (filter definition? sexps)))
 
 (defn get-namespace
