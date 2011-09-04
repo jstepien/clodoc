@@ -73,7 +73,11 @@
 
 (defn version-info
   []
-  (str "Running Docjure " version " on Clojure " (clojure-version)))
+  (str "Running Docjure "
+       (html
+         [:a {:href (str "https://github.com/jstepien/docjure/commit/" version)}
+          version])
+       " on Clojure " (clojure-version)))
 
 (defn copyrights
   []
