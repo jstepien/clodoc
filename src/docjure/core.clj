@@ -4,7 +4,8 @@
         [ring.util.codec :only [url-encode]]
         [hiccup.core :only [html escape-html]]
         hiccup.page-helpers
-        [clojure.contrib.repl-utils :only [get-source]])
+        [clojure.contrib.repl-utils :only [get-source]]
+        docjure.common)
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
             clojure.pprint
@@ -21,13 +22,6 @@
 (def *assets-addr* "")
 
 (def *root-addr* "")
-
-(defmacro stdout-of
-  [#^String cmd]
-  `~(.trim ^String (slurp (.getInputStream (.exec (Runtime/getRuntime) cmd)))))
-
-(def version
-  (apply str (take 8 (stdout-of "git log --format=oneline HEAD~.."))))
 
 (defn include-sh-css
   [name]
