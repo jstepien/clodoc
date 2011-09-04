@@ -56,11 +56,14 @@
 
 (defn doc-string
   [def]
-  (or
-    (:doc (meta (second def)))
-    (let [doc (second (rest def))]
-      (and (string? doc) doc))
-    ""))
+  (str2/join "\n"
+             (map str2/trim
+                  (str2/split-lines
+                    (or
+                      (:doc (meta (second def)))
+                      (let [doc (second (rest def))]
+                        (and (string? doc) doc))
+                      "")))))
 
 (def definitions
   '#{def definline definterface defmacro defmulti defn defonce defprotocol
@@ -82,16 +85,19 @@
 
 (defn get-namespace
   [sexps]
-  (second (first (filter #(= (first %) 'ns) sexps))))
+  (let [ns (second (first (filter #('#{ns in-ns} (first %)) sexps)))]
+    (cond (symbol? ns)          ns
+          (= 'quote (first ns)) (second ns))))
 
 (defn ns-publics-in
   [sexps]
   (reduce
     (fn [acc [filename contents]]
       (let [ns (get-namespace contents)]
-        (if (or (nil? ns) (.endsWith (str ns) ".examples"))
+        (if (or (nil? ns) (re-find #"\.examples?\.?" (name ns)))
           acc
-          (assoc acc ns (ns-contents ns contents)))))
+          (assoc acc ns (conj (or (acc ns) {})
+                              (ns-contents ns contents))))))
     {} sexps))
 
 (defn clj-files-in
