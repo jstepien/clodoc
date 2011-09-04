@@ -3,6 +3,7 @@
             [clojure.pprint :as pprint]
             [clojure.contrib.str-utils2 :as str2]
             [clojure-http.resourcefully :as res]
+            [docjure.persistent :as persistent]
             [docjure.cache :as cache]))
 
 (defn get-body
@@ -106,15 +107,16 @@
     (clj-files-in-jar name)
     (clj-files-in-jar (get-url-for name))))
 
-(defn populate-cache
+(defn populate-storage
   [data]
-  (let [old-ns (or (cache/get! "all-ns") [])]
-    (cache/put! "all-ns" (sort (distinct (concat old-ns (map first data)))))
+  (let [old-ns (or (persistent/get! "all-ns") [])]
+    (cache/clear!)
+    (persistent/put! "all-ns" (sort (distinct (concat old-ns (map first data)))))
     (doseq [[ns vars] data]
-      (cache/put! (str "ns:" ns) (map first vars))
+      (persistent/put! (str "ns:" ns) (map first vars))
       (doseq [[name meta] vars]
-        (cache/put! (str "var:" ns "/" name) meta)))))
+        (persistent/put! (str "var:" ns "/" name) meta)))))
 
 (defn scan
   [name]
-  (populate-cache (ns-publics-in (clj-files-in name))))
+  (populate-storage (ns-publics-in (clj-files-in name))))

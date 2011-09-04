@@ -12,6 +12,7 @@
             [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
             [docjure.cache :as cache]
+            [docjure.persistent :as persistent]
             [docjure.background :as background]
             [docjure.jars-handler :as jars-handler]
             [clojure-http.resourcefully :as res])
@@ -126,7 +127,8 @@
 (defn var-page [ns-str var-str]
   (cache/get!
     (str "var-rendered:" ns-str "/" var-str)
-    #(let [{src :src doc :doc} (cache/get! (str "var:" ns-str "/" var-str))]
+    #(let [{src :src doc :doc} (persistent/get!
+                                 (str "var:" ns-str "/" var-str))]
        (layout
          [ns-str var-str]
          (if (not (empty? doc))
@@ -136,7 +138,7 @@
          (highlight!)))))
 
 (defn sorted-publics [ns-str]
-  (sort (cache/get! (str "ns:" ns-str))))
+  (sort (persistent/get! (str "ns:" ns-str))))
 
 (defn ns-contents [ns-str]
   (layout
@@ -153,7 +155,7 @@
 
 (defn all-namespaces
   []
-  (cache/get! "all-ns"))
+  (persistent/get! "all-ns"))
 
 (defn main-page
   []
@@ -169,7 +171,7 @@
     (fn [hash ns]
       (try
         (let [vars (filter #(str2/contains? (str %) x)
-                           (cache/get! (str "ns:" ns)))]
+                           (persistent/get! (str "ns:" ns)))]
           (if (empty? vars)
             hash
             (assoc hash ns vars)))))
