@@ -37,7 +37,7 @@
   (dosync (ref-set vm-cache (assoc @vm-cache key val))))
 
 (defn put!
-  [^Named key value]
+  [^clojure.lang.Named key value]
   (do
     (put-in-vmcache key value)
     (try
@@ -45,7 +45,7 @@
       (catch NullPointerException e nil))))
 
 (defn get!
-  ([^Named key]
+  ([^clojure.lang.Named key]
    (do
      (check-cache-version)
      (or
@@ -58,7 +58,7 @@
              value))
          (catch NullPointerException e nil))
        (println "Not present in jcache: " key))))
-  ([^Named key func]
+  ([^clojure.lang.Named key func]
    (or
      (get! key)
      (let [value (func)]
@@ -66,7 +66,7 @@
        value))))
 
 (defn delete!
-  [^Named key]
+  [^clojure.lang.Named key]
   (do
     (dosync (ref-set vm-cache (dissoc @vm-cache key)))
     (try
