@@ -1,14 +1,45 @@
 (ns docjure.persistent
   (:use am.ik.clj-gae-ds.core)
-  (:require [docjure.cache :as cache]))
+  (:require [docjure.cache :as cache])
+  (:import [java.util.zip GZIPOutputStream GZIPInputStream]
+           [org.apache.commons.codec.binary Base64]
+           [java.io ByteArrayOutputStream ByteArrayInputStream
+                    InputStreamReader]))
+
+(defn- compress
+  "Returns a string compressed with gzip and encoded with base64."
+  [string]
+  (let [out (ByteArrayOutputStream.)
+        gzip (GZIPOutputStream. out)]
+    (spit gzip string)
+    (String. (Base64/encodeBase64 (.toByteArray out)))))
+
+(defn- decompress
+  "Does the opposite of compress, not surprisingly."
+  [^String data]
+  (let [is (ByteArrayInputStream. (Base64/decodeBase64 data))
+        gzip (GZIPInputStream. is)]
+    (slurp gzip)))
 
 (defn- serialise
   [obj]
-  (with-out-str (print-dup obj *out*)))
+  (let [dump #(with-out-str (print-dup % *out*))
+        reasonable-size-difference 100
+        raw (dump obj)
+        compressed (compress raw)]
+    (dump
+      (if (> (- (count raw) (count compressed)) reasonable-size-difference)
+        [:compressed compressed]
+        [:raw raw]))))
 
 (defn- deserialise
   [^String str]
-  (with-in-str str (read)))
+  (let [load #(with-in-str % (read))
+        loaded (load str)
+        data (second loaded)]
+    (case (first loaded)
+      :raw        (load data)
+      :compressed (load (decompress data)))))
 
 (defn- get-entity
   [key]

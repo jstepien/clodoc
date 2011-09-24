@@ -9,5 +9,6 @@
                  [com.google.appengine/appengine-api-1.0-sdk "1.4.3"]
                  [com.google.appengine/appengine-jsr107cache "1.4.3"]
                  [clojure-http-client "1.1.0"]
-                 [am.ik/clj-gae-ds "0.3.0"]]
+                 [am.ik/clj-gae-ds "0.3.0"]
+                 [commons-codec/commons-codec "1.5"]]
   :aot [docjure.core])
