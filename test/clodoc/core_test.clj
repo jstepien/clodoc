@@ -1,5 +1,5 @@
-(ns docjure.core-test
-  (:use [docjure.core] :reload-all)
+(ns clodoc.core-test
+  (:use [clodoc.core] :reload-all)
   (:use [clojure.test]))
 
 (deftest replace-me ;; FIXME: write

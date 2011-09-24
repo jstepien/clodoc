@@ -1,4 +1,4 @@
-(defproject docjure "0.0.1-SNAPSHOT"
+(defproject clodoc "0.0.1-SNAPSHOT"
   :description "The description"
   :dependencies [[org.clojure/clojure "1.3.0"]
                  [org.clojure/clojure-contrib "1.2.0"]
@@ -11,4 +11,4 @@
                  [clojure-http-client "1.1.0"]
                  [am.ik/clj-gae-ds "0.3.0"]
                  [commons-codec/commons-codec "1.5"]]
-  :aot [docjure.core])
+  :aot [clodoc.core])

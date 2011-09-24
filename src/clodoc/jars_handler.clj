@@ -1,10 +1,10 @@
-(ns docjure.jars-handler
+(ns clodoc.jars-handler
   (:require [clojure.xml :as xml]
             [clojure.pprint :as pprint]
             [clojure.contrib.str-utils2 :as str2]
             [clojure-http.resourcefully :as res]
-            [docjure.persistent :as persistent]
-            [docjure.cache :as cache]))
+            [clodoc.persistent :as persistent]
+            [clodoc.cache :as cache]))
 
 (defn get-body
   [url]

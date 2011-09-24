@@ -1,20 +1,20 @@
-(ns docjure.core
+(ns clodoc.core
   (:use compojure.core
         ring.util.servlet
         [ring.util.codec :only [url-encode]]
         [hiccup.core :only [html escape-html]]
         hiccup.page-helpers
         [clojure.contrib.repl-utils :only [get-source]]
-        docjure.common)
+        clodoc.common)
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
             clojure.pprint
             [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
-            [docjure.cache :as cache]
-            [docjure.persistent :as persistent]
-            [docjure.background :as background]
-            [docjure.jars-handler :as jars-handler]
+            [clodoc.cache :as cache]
+            [clodoc.persistent :as persistent]
+            [clodoc.background :as background]
+            [clodoc.jars-handler :as jars-handler]
             [clojure-http.resourcefully :as res])
   (:import java.util.jar.JarFile)
   (:gen-class
@@ -34,7 +34,7 @@
 
 (defn home-link
   []
-  (link-to (str *root-addr* "/") "docjure"))
+  (link-to (str *root-addr* "/") "clodoc"))
 
 (defn ns-addr
   [ns]
@@ -49,7 +49,7 @@
   (link-to (str (ns-addr ns) "/" (url-encode df)) (escape-html df)))
 
 (defn title
-  ([] "docjure")
+  ([] "clodoc")
   ([ns] (str (title) " &raquo; " (escape-html ns)))
   ([ns var] (str (title ns) "/" (escape-html var))))
 
@@ -60,7 +60,7 @@
 
 (def fork-me-ribbon
   (link-to
-    "http://github.com/jstepien/docjure"
+    "http://github.com/jstepien/clodoc"
     (html [:img
      {:style "position: absolute; top: 0; right: 0; border: 0;"
       :src "http://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png"
@@ -68,9 +68,9 @@
 
 (defn version-info
   []
-  (str "Running Docjure "
+  (str "Running Clodoc "
        (html
-         [:a {:href (str "https://github.com/jstepien/docjure/commit/" version)}
+         [:a {:href (str "https://github.com/jstepien/clodoc/commit/" version)}
           version])
        " on Clojure " (clojure-version)))
 

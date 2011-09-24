@@ -1,6 +1,6 @@
-(ns docjure.persistent
+(ns clodoc.persistent
   (:use am.ik.clj-gae-ds.core)
-  (:require [docjure.cache :as cache])
+  (:require [clodoc.cache :as cache])
   (:import [java.util.zip GZIPOutputStream GZIPInputStream]
            [org.apache.commons.codec.binary Base64]
            [java.io ByteArrayOutputStream ByteArrayInputStream

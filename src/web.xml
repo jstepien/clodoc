@@ -1,11 +1,11 @@
 <web-app>
  <servlet>
-   <servlet-name>docjure</servlet-name>
-   <servlet-class>docjure.core</servlet-class>
+   <servlet-name>clodoc</servlet-name>
+   <servlet-class>clodoc.core</servlet-class>
    <load-on-startup>1</load-on-startup>
  </servlet>
  <servlet-mapping>
-   <servlet-name>docjure</servlet-name>
+   <servlet-name>clodoc</servlet-name>
    <url-pattern>/*</url-pattern>
  </servlet-mapping>
 </web-app>

@@ -1,5 +1,5 @@
-(ns docjure.cache
-  (:use docjure.common)
+(ns clodoc.cache
+  (:use clodoc.common)
   (:import net.sf.jsr107cache.CacheManager
            java.util.Collections))
 

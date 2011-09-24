@@ -1,4 +1,4 @@
-(ns docjure.common)
+(ns clodoc.common)
 
 (defmacro
   ^{:private 1}
