@@ -16,6 +16,7 @@
             [clodoc.persistent :as persistent]
             [clodoc.background :as background]
             [clodoc.jars-handler :as jars-handler]
+            [clodoc.javascript :as js]
             [clojure-http.resourcefully :as res])
   (:import java.util.jar.JarFile)
   (:gen-class
@@ -121,7 +122,7 @@
 (defn highlight!
   []
   (javascript-tag
-    (str
+    (js/compress
       "SyntaxHighlighter.defaults['gutter'] = false;"
       "SyntaxHighlighter.defaults['toolbar'] = false;"
       "SyntaxHighlighter.all();")))
