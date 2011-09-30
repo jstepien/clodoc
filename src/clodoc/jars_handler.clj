@@ -1,7 +1,7 @@
 (ns clodoc.jars-handler
   (:require [clojure.xml :as xml]
-            [clojure.pprint :as pprint]
             [clojure.contrib.str-utils2 :as str2]
+            [clojure.string :as string]
             [clojure-http.resourcefully :as res]
             [clodoc.persistent :as persistent]
             [clodoc.cache :as cache]))
@@ -33,15 +33,14 @@
   [zip]
   (let [in-parens #(str "(\n" % "\n)")
         buflen 4096
-        buf (byte-array buflen)]
-    (with-in-str
-      (in-parens
-        (loop [contents ""]
-          (let [nbytes (.read zip buf 0 buflen)]
-            (if (= -1 nbytes)
-              contents
-              (recur (str contents (String. buf 0 nbytes)))))))
-      (read))))
+        buf (byte-array buflen)
+        data (in-parens
+               (loop [contents ""]
+                 (let [nbytes (.read zip buf 0 buflen)]
+                   (if (= -1 nbytes)
+                     contents
+                     (recur (str contents (String. buf 0 nbytes)))))))]
+    {:code data :sexps (with-in-str data (read))}))
 
 (defn clj-files-in-jar
   [addr]
@@ -66,6 +65,11 @@
                         (and (string? doc) doc))
                       "")))))
 
+(defn log [& msg]
+  (println (.format (java.text.DateFormat/getDateTimeInstance)
+                    (java.util.Date.))
+           "-" (string/join " " (map str msg))))
+
 (def definitions
   '#{def definline definterface defmacro defmulti defn defonce defprotocol
      defrecord defstruct deftype})
@@ -74,14 +78,45 @@
   [sexp]
   (definitions (first sexp)))
 
+(defn try-read
+  [^String code]
+  (let [lines (string/split-lines code)
+        lines-count (count lines)]
+    (loop [num 2]
+      (if (> num lines-count)
+        ['() ""]
+        (let [joined (string/join "\n" (take num lines))
+              read-str #(with-in-str % (read))
+              sexp (try (read-str joined)
+                     (catch RuntimeException ex nil))]
+          (if sexp
+            [sexp joined]
+            (recur (inc num))))))))
+
+(defn source-string
+  [^String whole-code def]
+  "This function badly needs to be optimised."
+  (let [to-next-paren (fn [string] (apply str (drop-while #(not (= \( %)) string)))
+        defines? (fn [code-sexps] (= (take 2 def) (take 2 code-sexps)))]
+    (apply log (take 2 def))
+    (loop [code- (.substring whole-code 1)]
+      (let [^String code (to-next-paren code-)
+            [sexps sexps-code] (try-read code)]
+        ;(print "  ") (prn (apply str (take 20 code)) (take 2 sexps))
+        (if (empty? code)
+          (throw (Exception. (str "Failed to read "
+                                  (string/join " " (take 2 def))))))
+        (if (defines? sexps)
+          sexps-code
+          (recur (.substring code 1)))))))
+
 (defn ns-contents
-  [ns sexps]
+  [{sexps :sexps code :code}]
   (reduce
     (fn [acc def]
       (assoc acc (second def)
              {:doc (doc-string def)
-              :src (binding [pprint/*print-suppress-namespaces* true]
-                      (with-out-str (pprint/pprint def)))}))
+              :src (source-string code def)}))
     {} (filter definition? sexps)))
 
 (defn get-namespace
@@ -94,11 +129,13 @@
   [sexps]
   (reduce
     (fn [acc [filename contents]]
-      (let [ns (get-namespace contents)]
+      (let [ns (get-namespace (:sexps contents))]
         (if (or (nil? ns) (re-find #"\.examples?\.?" (name ns)))
           acc
-          (assoc acc ns (conj (or (acc ns) {})
-                              (ns-contents ns contents))))))
+          (do
+            (log "Namespace: " ns)
+            (assoc acc ns (conj (or (acc ns) {})
+                                (ns-contents contents)))))))
     {} sexps))
 
 (defn clj-files-in
