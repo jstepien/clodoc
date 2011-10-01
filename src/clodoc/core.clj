@@ -70,7 +70,7 @@
   []
   (str "Running Clodoc "
        (html
-         [:a {:href (str "https://github.com/jstepien/clodoc/commit/" version)}
+         [:a {:href (str "https://github.com/jstepien/clodoc/commits/" version)}
           version])
        " on Clojure " (clojure-version)))
 
