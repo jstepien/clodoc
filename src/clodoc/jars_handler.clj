@@ -178,4 +178,5 @@
 
 (defn scan
   [name]
-  (populate-storage (ns-publics-in (clj-files-in name))))
+  (time
+    (populate-storage (ns-publics-in (clj-files-in name)))))
