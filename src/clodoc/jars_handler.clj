@@ -78,20 +78,21 @@
   [sexp]
   (definitions (first sexp)))
 
-(defn try-read
-  [^String code]
-  (let [lines (string/split-lines code)
-        lines-count (count lines)]
-    (loop [num 2]
-      (if (> num lines-count)
-        ['() ""]
-        (let [joined (string/join "\n" (take num lines))
-              read-str #(with-in-str % (read))
-              sexp (try (read-str joined)
-                     (catch RuntimeException ex nil))]
-          (if sexp
-            [sexp joined]
-            (recur (inc num))))))))
+(def try-read
+  (memoize
+    (fn [^String code]
+      (let [lines (string/split-lines code)
+            lines-count (count lines)]
+        (loop [num 2]
+          (if (> num lines-count)
+            ['() ""]
+            (let [joined (string/join "\n" (take num lines))
+                  read-str #(with-in-str % (read))
+                  sexp (try (read-str joined)
+                         (catch RuntimeException ex nil))]
+              (if sexp
+                [sexp joined]
+                (recur (inc num))))))))))
 
 (defn source-string
   [^String whole-code def]
