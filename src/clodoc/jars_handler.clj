@@ -78,34 +78,54 @@
   [sexp]
   (definitions (first sexp)))
 
-(def try-read
-  (memoize
-    (fn [^String code]
-      (let [lines (string/split-lines code)
-            lines-count (count lines)]
-        (loop [num 2]
-          (if (> num lines-count)
-            ['() ""]
-            (let [joined (string/join "\n" (take num lines))
-                  read-str #(with-in-str % (read))
-                  sexp (try (read-str joined)
-                         (catch RuntimeException ex nil))]
-              (if sexp
-                [sexp joined]
-                (recur (inc num))))))))))
+(defn to-next-paren
+  [^String str]
+  (.substring str (.indexOf str "(")))
+
+(defn- try-read
+  [^String code]
+  (if (.startsWith code "(def")
+    (let [lines (string/split-lines code)
+          lines-count (count lines)]
+      (loop [num 0]
+        (if (>= num lines-count)
+          ['() ""]
+          (let [joined (string/join "\n" (take num lines))
+                read-str #(with-in-str % (read))
+                sexp (try (read-str joined)
+                       (catch RuntimeException ex nil))]
+            (if (and sexp (seq? sexp))
+              [sexp joined]
+              (recur (inc num)))))))
+    (if-let [skipped-a-bit (try (to-next-paren (.substring code 1))
+                             (catch StringIndexOutOfBoundsException _ nil))]
+      (recur skipped-a-bit)
+      ['() ""])))
+
+(def ^{:private true :dynamic true} *try-read-cache* nil)
+
+(defn- cached-try-read
+  [^String code]
+  (let [key (.substring code 0 (min (count code) 100))]
+    (if-let [result-from-cache (@*try-read-cache* key)]
+      result-from-cache
+      (let [result (try-read code)]
+        (dosync
+          (ref-set *try-read-cache*
+                   (assoc @*try-read-cache* key result)))
+        result))))
 
 (defn source-string
   [^String whole-code def]
   "This function badly needs to be optimised."
-  (let [to-next-paren (fn [string] (apply str (drop-while #(not (= \( %)) string)))
-        defines? (fn [code-sexps] (= (take 2 def) (take 2 code-sexps)))]
+  (let [defines? (fn [code-sexps] (= (take 2 def) (take 2 code-sexps)))]
     (apply log (take 2 def))
     (loop [code- (.substring whole-code 1)]
       (let [^String code (to-next-paren code-)
-            [sexps sexps-code] (try-read code)]
+            [sexps sexps-code] (cached-try-read code)]
         ;(print "  ") (prn (apply str (take 20 code)) (take 2 sexps))
         (if (empty? code)
-          (throw (Exception. (str "Failed to read "
+          (throw (Exception. (str "Failed to find source for "
                                   (string/join " " (take 2 def))))))
         (if (defines? sexps)
           sexps-code
@@ -135,8 +155,9 @@
           acc
           (do
             (log "Namespace: " ns)
-            (assoc acc ns (conj (or (acc ns) {})
-                                (ns-contents contents)))))))
+            (binding [*try-read-cache* (ref {})]
+              (assoc acc ns (conj (or (acc ns) {})
+                                  (ns-contents contents))))))))
     {} sexps))
 
 (defn clj-files-in
