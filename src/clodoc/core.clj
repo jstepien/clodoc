@@ -9,6 +9,7 @@
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
             clojure.pprint
+            [clojure.string :as string]
             [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
             [clodoc.cache :as cache]
@@ -197,16 +198,77 @@
                         (second hash)))))
             vars-hash))))))
 
-(defn add-cache-control
-  [html]
-  {:headers {"Cache-Control" (str "public, max-age: " (* 60 60))}
-   :body html})
+(defn cache
+  [resp]
+  (let [k "Cache-Control" v (str "public, max-age: " (* 60 60))]
+    (cond
+      (string? resp)  {:headers {k v} :body resp}
+      (map? resp)     (assoc resp :headers (assoc (resp :headers) k v)))))
+
+
+(defmulti jsonify class)
+
+(defmethod jsonify clojure.lang.Named
+  [x]
+  (jsonify (name x)))
+
+(defmethod jsonify String
+  [x]
+  (string/trim (prn-str x)))
+
+(defmethod jsonify Number
+  [x]
+  (str x))
+
+(defmethod jsonify clojure.lang.IPersistentMap
+  [x]
+  (str \{
+       (string/join \, (map (fn [[k v]] (str (jsonify k) \: (jsonify v))) x))
+       \}))
+
+(defn json-reply
+  [obj]
+  {:headers {"Content-Type" "application/json"}
+   :body (str (jsonify obj) "\n")})
+
+(defn accepting
+  [headers & options]
+  (if (or (= (first options) :else)
+          (= (first options) (headers "accept")))
+    (second options)
+    (apply accepting headers (drop 2 options))))
+
+(defn ns-uris-hash
+  []
+  {:namespaces
+   (apply hash-map (mapcat #(list % (str "/v0/ns/" %)) (all-namespaces)))})
+
+(defn ns-contents-hash
+  [ns]
+  (apply hash-map (mapcat #(list % (str "/v0/ns/" ns "/" %))
+                          (sorted-publics (str ns)))))
+
+(defn var-hash
+  [ns var]
+  (let [{src :src doc :doc} (persistent/get!  (str "var:" ns "/" var))]
+    {:src src :doc doc}))
+
+(def json "application/json")
+
+(defn only-json
+  [headers response]
+  (accepting headers
+    json response
+    :else {:status 406})) ; 406 Not Acceptable
 
 (defroutes our-routes
-  (GET "/" [] (add-cache-control (main-page)))
-  (GET ["/doc/:ns", :ns #"[\w\-\.]+"] [ns] (add-cache-control (ns-contents ns)))
+  (GET "/" {hdr :headers} (cache
+                            (accepting hdr
+                              json (json-reply {"API version 0" "/v0"})
+                              :else (main-page))))
+  (GET ["/doc/:ns", :ns #"[\w\-\.]+"] [ns] (cache (ns-contents ns)))
   (GET ["/doc/:ns/:var", :ns #"[\w\-\.]+", :var #".*"] [ns var]
-       (add-cache-control (var-page ns var)))
+       (cache (var-page ns var)))
   (POST "/search" {params :params} (search-results (params :what)))
   (POST "/scan" [name] (do
                          (background/add-task "/background_scan" {:name name})
@@ -214,6 +276,13 @@
   (POST "/background_scan" {{name :name} :params} (do
                                                     (jars-handler/scan name)
                                                     (str "scanned " name)))
+  (GET ["/v0"] {hdr :headers}
+       (only-json hdr (cache (json-reply (ns-uris-hash)))))
+  (GET ["/v0/ns/:ns", :ns #"[\w\-\.]+"] {hdr :headers {ns :ns} :params}
+       (only-json hdr (cache (json-reply (ns-contents-hash ns)))))
+  (GET ["/v0/ns/:ns/:var", :ns #"[\w\-\.]+", :var #".*"]
+       {hdr :headers {ns :ns var :var} :params}
+       (only-json hdr (cache (json-reply (var-hash ns var)))))
   (route/not-found (not-found)))
 
 (defservice
