@@ -24,11 +24,11 @@
 
 (def *root-addr* "")
 
-(defn include-sh-css
+(defn include-our-css
   [name]
   (include-css (str *assets-addr* "/styles/" name)))
 
-(defn include-sh-js
+(defn include-our-js
   [name]
   (include-js (str *assets-addr* "/scripts/" name)))
 
@@ -105,17 +105,12 @@
      [:head
       [:meta {:http-equiv "Content-Type" :content "text/html;charset=utf-8"}]
       [:title (apply title title-coll)]
-      (include-sh-css "shCoreJankowy.css")
-      (include-sh-css "shThemeRDark.css")
-      (include-sh-js "shCore.js")
-      (include-sh-js "shBrushClojure.js")
+      (include-our-css "shCoreJankowy.css")
+      (include-our-css "shThemeRDark.css")
+      (include-our-js "shCore.js")
+      (include-our-js "shBrushClojure.js")
       (include-css "http://fonts.googleapis.com/css?family=Inconsolata")
-      ; TODO: abstraction!
-      [:style {:type "text/css"}
-       "body, pre, code { background: #1B2426; color: silver;"
-       "font-family: \"Inconsolata\", monospace; font-size: 16px;"
-       "width: 960px; margin: 10px auto;}"
-       "a { color: #FFAA3E; }"]
+      (include-our-css "style.css")
       (google-analytics)]
      [:body
       [:h1 (apply title-with-links title-coll)]

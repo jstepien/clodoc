@@ -4,4 +4,4 @@
 classes
 lib
 pom.xml
-war
+war/WEB-INF/appengine-generated
