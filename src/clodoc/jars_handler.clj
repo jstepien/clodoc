@@ -1,6 +1,5 @@
 (ns clodoc.jars-handler
   (:require [clojure.xml :as xml]
-            [clojure.contrib.str-utils2 :as str2]
             [clojure.string :as string]
             [clojure-http.resourcefully :as res]
             [clodoc.persistent :as persistent]
@@ -15,8 +14,8 @@
 
 (defn get-url-for
   [name]
-  (let [pkg (str2/replace name #".*/" "")
-        path (str2/replace name \. \/)
+  (let [pkg (string/replace name #".*/" "")
+        path (string/replace name \. \/)
         main-url (str "http://clojars.org/repo/" path "/")
         pkg-meta (parse-xml-str (get-body (str main-url "maven-metadata.xml")))
         versions (:content (first (:content (first
@@ -24,7 +23,7 @@
                                                       (:content pkg-meta))))))
         newest-version (last
                          (filter
-                           #(not (str2/contains? % "SNAPSHOT"))
+                           #(not (.contains ^String % "SNAPSHOT"))
                            (map #(first (:content %)) versions)))
         jar-url (str main-url newest-version "/" pkg "-" newest-version ".jar")]
     jar-url))
@@ -56,14 +55,14 @@
 
 (defn doc-string
   [def]
-  (str2/join "\n"
-             (map str2/trim
-                  (str2/split-lines
-                    (or
-                      (:doc (meta (second def)))
-                      (let [doc (second (rest def))]
-                        (and (string? doc) doc))
-                      "")))))
+  (string/join "\n"
+               (map string/trim
+                    (string/split-lines
+                      (or
+                        (:doc (meta (second def)))
+                        (let [doc (second (rest def))]
+                          (and (string? doc) doc))
+                        "")))))
 
 (defn log [& msg]
   (println (.format (java.text.DateFormat/getDateTimeInstance)

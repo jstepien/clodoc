@@ -4,13 +4,11 @@
         [ring.util.codec :only [url-encode]]
         [hiccup.core :only [html escape-html]]
         hiccup.page-helpers
-        [clojure.contrib.repl-utils :only [get-source]]
         clodoc.common)
   (:require [compojure.route :as route]
             [compojure.handler :as handler]
             clojure.pprint
             [clojure.string :as string]
-            [clojure.contrib.str-utils2 :as str2]
             [hiccup.form-helpers :as form]
             [clodoc.cache :as cache]
             [clodoc.persistent :as persistent]
@@ -188,7 +186,7 @@
   (reduce
     (fn [hash ns]
       (try
-        (let [vars (filter #(str2/contains? (str %) x)
+        (let [vars (filter #(.contains (str %) x)
                            (persistent/get! (str "ns:" ns)))]
           (if (empty? vars)
             hash
