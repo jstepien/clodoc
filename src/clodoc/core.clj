@@ -187,7 +187,11 @@
     (let
       [vars-hash (find-vars-containing what)]
       (if (empty? vars-hash)
-        [:p "No results."]
+        [:p "No results. "
+         (link-to
+           (str "https://www.google.com/search?q=site:www.clodoc.org+"
+                (string/replace what #" +" "+"))
+           "Try Google instead") "."]
         (unordered-list
           (map
             (fn [hash]
