@@ -90,6 +90,7 @@
     (doctype :html5)
     [:html
      [:head
+      [:meta {:http-equiv "Content-Type" :content "text/html;charset=utf-8"}]
       [:title (apply title title-coll)]
       (include-sh-css "shCoreJankowy.css")
       (include-sh-css "shThemeRDark.css")
