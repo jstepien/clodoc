@@ -9,3 +9,22 @@ body, pre, code {
 a {
   color: #FFAA3E;
 }
+div.api_example {
+  margin: 1ex 0 1ex;
+  background: #3B4446;
+  border: 1px solid #aaa;
+  -webkit-border-radius: 5px;
+  -moz-border-radius: 5px;
+  border-radius: 5px;
+  color: #aaa;
+}
+div.api_example kbd, div.api_example samp {
+  margin: 1ex;
+  display: block;
+}
+div.api_example kbd {
+  color: #fff;
+}
+div.api_example kbd:before {
+  content: '$ ';
+}

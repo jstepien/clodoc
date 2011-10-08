@@ -117,7 +117,9 @@
       search-form
       body
       [:div {:style "text-align: center; font-size: small"}
-       (version-info) [:br] (copyrights)]
+       [:br] (version-info) [:br] (copyrights) [:br]
+       (link-to "/api" "API") " "
+       (link-to "https://github.com/jstepien/clodoc/issues" "Issues")]
       fork-me-ribbon]]))
 
 (defn not-found []
@@ -173,6 +175,21 @@
   (layout
     []
     (unordered-list (map #(ns-link (str %)) (all-namespaces)))))
+
+(defn api-docs-page
+  []
+  (layout
+    []
+    [:p
+     "We have a pretty sweet JSON API for you to enjoy. Ideas? "
+     (link-to "https://github.com/jstepien/clodoc/issues"
+              "Share them with us") "."]
+    [:div {:class :api_example}
+     [:kbd "curl www.clodoc.org -H 'Accept: application/json'"]
+     [:samp "{'API version 0':'/v0'}"]]
+    [:div {:class :api_example}
+     [:kbd "curl www.clodoc.org/v0/ns/clojure.core/first -H 'Accept: application/json'"]
+     [:samp "{'src':'(def\\n ^{:arglists '([coll])\\n   :doc \\'Returns the first item in the collection. Calls seq on its\\n    argument. If coll is nil, returns nil.\\'\\n   :added \\'1.0\\'\\n   :static true}\\n first (fn ^:static first [coll] (. clojure.lang.RT (first coll))))','doc':'Returns the first item in the collection. Calls seq on its\\nargument. If coll is nil, returns nil.'}"]]))
 
 (defn find-vars-containing
   "Returns a map with vars containing a given string assigned to their
@@ -290,6 +307,7 @@
   (POST "/background_scan" {{name :name} :params} (do
                                                     (jars-handler/scan name)
                                                     (str "scanned " name)))
+  (GET "/api" [] (cache (api-docs-page)))
   (GET ["/v0"] {hdr :headers}
        (only-json hdr (cache (json-reply (ns-uris-hash)))))
   (GET ["/v0/ns/:ns", :ns #"[\w\-\.]+"] {hdr :headers {ns :ns} :params}
